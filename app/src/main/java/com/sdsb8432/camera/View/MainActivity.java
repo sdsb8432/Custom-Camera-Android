@@ -1,8 +1,10 @@
 package com.sdsb8432.camera.View;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.databinding.DataBindingUtil;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -15,10 +17,11 @@ import android.view.WindowManager;
 
 import com.sdsb8432.camera.Controller.MyCamera;
 import com.sdsb8432.camera.Controller.MyCameraAPI21;
+import com.sdsb8432.camera.Model.Size;
 import com.sdsb8432.camera.R;
 import com.sdsb8432.camera.databinding.ActivityMainBinding;
 
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback{
+public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, Camera.ShutterCallback{
 
     private final String TAG = MainActivity.class.getSimpleName();
     private ActivityMainBinding mainBinding;
@@ -50,6 +53,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         else {
             setCameraAPI21();
         }*/
+
+        mainBinding.textViewProperties.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), PropertyActivity.class).putExtra("cameraParameters", myCamera.getCameraParameters()));
+            }
+        });
     }
 
     private void init() {
@@ -66,6 +76,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     private void setCamera() {
         myCamera = new MyCamera(this);
+        myCamera.setPictureSize(new Size(5312, 2988));
+
+        //셔터 callback 처리와 동시에 셔터음을 발생시킬 수 있다.
+        myCamera.setShutterCallback(this);
         myCamera.start(mainBinding.surfaceView);
 
     }
@@ -103,5 +117,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 finish();
             }
         }
+    }
+
+    @Override
+    public void onShutter() {
+        //처리
     }
 }

@@ -10,10 +10,17 @@ import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
 
+import com.sdsb8432.camera.Model.CameraParameter;
+import com.sdsb8432.camera.Model.Size;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Created by sonseongbin on 2017. 4. 3..
@@ -26,6 +33,8 @@ public class MyCamera implements View.OnTouchListener, Camera.AutoFocusCallback 
     private Context context;
     private Camera camera;
 
+    private Camera.ShutterCallback shutterCallback;
+
     public MyCamera(Context context) {
         this.context = context;
         init();
@@ -33,32 +42,13 @@ public class MyCamera implements View.OnTouchListener, Camera.AutoFocusCallback 
 
     private void init() {
         camera = Camera.open();
-
     }
 
     public void start(SurfaceView surfaceView) {
         try {
             camera.setPreviewDisplay(surfaceView.getHolder());
-
-            Camera.Parameters parameters = camera.getParameters();
-
-            for(Camera.Size size : parameters.getSupportedPreviewSizes()) {
-                Log.d(TAG, "PreviewSize = width : " + String.valueOf(size.width) + ", height : " + String.valueOf(size.height));
-            }
-
-            for(Camera.Size size : parameters.getSupportedPictureSizes()) {
-                Log.d(TAG, "PictureSize = width : " + String.valueOf(size.width) + ", height : " + String.valueOf(size.height));
-            }
-
-
-            for(Camera.Size size : parameters.getSupportedVideoSizes()) {
-                Log.d(TAG, "VideoSize = width : " + String.valueOf(size.width) + ", height : " + String.valueOf(size.height));
-            }
-
             camera.startPreview();
             surfaceView.setOnTouchListener(this);
-
-
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -67,6 +57,46 @@ public class MyCamera implements View.OnTouchListener, Camera.AutoFocusCallback 
 
     public void stop() {
         camera.stopPreview();
+    }
+
+    public void setShutterCallback(Camera.ShutterCallback shutterCallback) {
+        this.shutterCallback = shutterCallback;
+    }
+
+    public CameraParameter getCameraParameters() {
+
+        Camera.Parameters parameters = camera.getParameters();
+
+        List<Size> sizeList = new ArrayList<>();
+        CameraParameter cameraParameter = new CameraParameter();
+
+        for(Camera.Size size : parameters.getSupportedPreviewSizes()) {
+            sizeList.add(new Size(size.width, size.height));
+        }
+
+        cameraParameter.setSupportedPreviewSizes(sizeList);
+        sizeList = new ArrayList<>();
+
+        for(Camera.Size size : parameters.getSupportedPictureSizes()) {
+            sizeList.add(new Size(size.width, size.height));
+        }
+
+        cameraParameter.setSupportedPictureSizes(sizeList);
+        sizeList = new ArrayList<>();
+
+        for(Camera.Size size : parameters.getSupportedVideoSizes()) {
+            sizeList.add(new Size(size.width, size.height));
+        }
+
+        cameraParameter.setSupportedVideoSizes(sizeList);
+
+        return cameraParameter;
+    }
+
+    public void setPictureSize(Size size) {
+        Camera.Parameters parameters = camera.getParameters();
+        parameters.setPictureSize(size.width, size.height);
+        camera.setParameters(parameters);
     }
 
     public void takePicture() {
@@ -88,22 +118,20 @@ public class MyCamera implements View.OnTouchListener, Camera.AutoFocusCallback 
     @Override
     public void onAutoFocus(boolean success, Camera camera) {
         Log.d(TAG, "onAutoFocus");
-        camera.takePicture(new Camera.ShutterCallback() {
-            @Override
-            public void onShutter() {
-
-            }
-        }, null, new Camera.PictureCallback() {
+        camera.takePicture(shutterCallback, null, new Camera.PictureCallback() {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
 
                 try {
                     Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                    FileOutputStream outputStream = new FileOutputStream(new File(Environment.getExternalStorageDirectory() + "/Download/1.jpg"));
+                    FileOutputStream outputStream = new FileOutputStream(new File(Environment.getExternalStorageDirectory() + "/Download/"+
+                            new SimpleDateFormat("yyyyMMddHHmmss").format(new Date())+".jpg"));
 
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
 
                     outputStream.close();
+
+                    camera.startPreview();
 
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
